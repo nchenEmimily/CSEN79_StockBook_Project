@@ -1,0 +1,93 @@
+# This file is annotated. The outputs are accurate, but the comments are additional info for your help
+# SELL alice
+REST 1 100 50.30
+
+# SELL bob
+REST 2 200 50.20
+
+# SELL carol
+REST 3 150 50.20
+
+# BUY dave
+REST 4 100 50.00
+
+# BUY erin
+REST 5 300 50.10
+
+# BUY frank
+REST 6 50 50.10
+
+# BOOK (default depth 5)
+ASK 50.20 350 2
+ASK 50.30 100 1
+BID 50.10 350 2
+BID 50.00 100 1
+END
+
+# BUY gina
+TRADE 7 2 200 50.20
+TRADE 7 3 150 50.20
+REST 7 50 50.20
+
+# BOOK 3 (3 asks, 3 bids)
+ASK 50.30 100 1
+BID 50.20 50 1
+BID 50.10 350 2
+BID 50.00 100 1
+END
+
+# Cancel 1
+CANCELLED 6 50
+
+# Cancel 2
+ERROR unknown order 6
+
+# MARKET SELL alice (alice sells to the best buy first then goes down)
+TRADE 7 8 50 50.20
+TRADE 5 8 300 50.10
+TRADE 4 8 100 50.00
+UNFILLED 8 50
+
+# BOOK
+ASK 50.30 100 1
+END
+
+# MARKET BUY (larger than everything left, so dave is bought up)
+TRADE 9 1 100 50.30
+UNFILLED 9 900
+
+# BUY erin
+ERROR duplicate id 5
+
+# SELL bob
+ERROR bad command
+
+# FOO
+ERROR unknown command
+
+# HISTORY alice
+#1 PLACE 1 SELL 100 50.30
+#12 PLACE 8 SELL 500 MKT
+#12 FILL 8 50 50.20
+#12 FILL 8 300 50.10
+#12 FILL 8 100 50.00
+#12 UNFILLED 8 50
+#14 FILL 1 100 50.30        # dave's market buy
+END
+
+# HISTORY gina
+#8 PLACE 7 BUY 400 50.20
+#8 FILL 7 200 50.20
+#8 FILL 7 150 50.20
+#12 FILL 7 50 50.20
+END
+
+# HISTORY dave 2
+#14 FILL 9 100 50.30
+#14 UNFILLED 9 900
+END
+
+# HISTORY nobody
+END
+
+# STATS isn't included

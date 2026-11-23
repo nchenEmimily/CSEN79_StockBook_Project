@@ -1,0 +1,29 @@
+# Project 1 sample script. Lines starting with # are comments.
+# Build a small book: three sellers and three buyers.
+SELL alice 1 100 50.30
+SELL bob 2 200 50.20
+SELL carol 3 150 50.20
+BUY dave 4 100 50.00
+BUY erin 5 300 50.10
+BUY frank 6 50 50.10
+BOOK
+# A buy that crosses the spread: fills bob first (oldest at 50.20), then carol, then rests.
+BUY gina 7 400 50.20
+BOOK 3
+# Cancel a resting order, then try to cancel it again.
+CANCEL 6
+CANCEL 6
+# A market sell sweeps the bids, best price first.
+MARKET SELL alice 8 500
+BOOK
+# A market buy larger than everything left on the ask side.
+MARKET BUY dave 9 1000
+# Errors.
+BUY erin 5 10 49.00
+SELL bob 10 0 50.00
+FOO
+HISTORY alice
+HISTORY gina
+HISTORY dave 2
+HISTORY nobody
+STATS
