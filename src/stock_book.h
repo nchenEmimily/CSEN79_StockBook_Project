@@ -9,7 +9,6 @@
 #define stock_book_h
 
 #include "order.h"
-#include "doubly_linked_list_node.h"
 
 #include <iostream>
 #include <string>
