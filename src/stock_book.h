@@ -49,7 +49,7 @@ struct TailForwardList
     ForwardList list;
     iterator last; //Points to the last valid element (when non-empty)
     bool has_last = false;
-    std::size_t count = 0; //Tracks the total number of elements/events
+    size_t count = 0; //Tracks the total number of elements/events
     
     void push_front(const std::pair<Order*, historyTag>& val);
     void push_back(const std::pair<Order*, historyTag>& val);
@@ -58,6 +58,7 @@ struct TailForwardList
     const_iterator begin() const;
     const_iterator end() const;
     bool empty() const;
+    size_t size() const;
 };
 
 struct HandBuiltTraits
@@ -552,22 +553,30 @@ void stock_book<Traits>::buyMarket(const std::string& user, Order::id_type id, O
         qty -= filled; //while-loop condition
     }
     
-    //qty now holds the unfilled qty
-    current->setShares(qty);
-    
-    //append #<n> UNFILLED <id> <qty> in user's HISTORY
-    //'u' means "UNFILLED..."
-    userHistoryMap_it = userHistoryMap.find(user);
-    historyTag tag{'u', num};
-    userHistoryMap_it->second->push_back(std::make_pair(current, tag));
-    
-    //print UNFILLED <id> <unfilled_qty>
-    std::cout << "UNFILLED " << id << " " << qty << std::endl;
-    
     //insert the Order's id and nullptr to the idOrderMap (for duplicate ID check)
     idOrderMap.insert(std::make_pair(id, nullptr));
     
-    //discard the unfilled
+    if(qty > 0) //if unfilled > 0
+    {
+        //qty now holds the unfilled qty
+        current->setShares(qty);
+        
+        //append #<n> UNFILLED <id> <qty> in user's HISTORY
+        //'u' means "UNFILLED..."
+        userHistoryMap_it = userHistoryMap.find(user);
+        historyTag tag{'u', num};
+        userHistoryMap_it->second->push_back(std::make_pair(current, tag));
+
+        //print UNFILLED <id> <unfilled_qty>
+        std::cout << "UNFILLED " << id << " " << qty << std::endl;
+        
+        //discard the unfilled
+    }
+    else //if unfilled == 0
+    {
+        delete current;
+    }
+    
     return;
     /* Post-condition of buyMarket():
      1) check inputs, id not existed, create Order object (heap creation)
@@ -677,22 +686,30 @@ void stock_book<Traits>::sellMarket(const std::string& user, Order::id_type id, 
         qty -= filled; //while-loop condition
     }
     
-    //qty now holds the unfilled qty
-    current->setShares(qty);
-    
-    //append #<n> UNFILLED <id> <qty> in user's HISTORY
-    //'u' means "UNFILLED..."
-    userHistoryMap_it = userHistoryMap.find(user);
-    historyTag tag{'u', num};
-    userHistoryMap_it->second->push_back(std::make_pair(current, tag));
-    
-    //print UNFILLED <id> <unfilled_qty>
-    std::cout << "UNFILLED " << id << " " << qty << std::endl;
-    
     //insert the Order's id and nullptr to the idOrderMap (for duplicate ID check)
     idOrderMap.insert(std::make_pair(id, nullptr));
     
-    //discard the unfilled
+    if(qty > 0) //if unfilled > 0
+    {
+        //qty now holds the unfilled qty
+        current->setShares(qty);
+        
+        //append #<n> UNFILLED <id> <qty> in user's HISTORY
+        //'u' means "UNFILLED..."
+        userHistoryMap_it = userHistoryMap.find(user);
+        historyTag tag{'u', num};
+        userHistoryMap_it->second->push_back(std::make_pair(current, tag));
+        
+        //print UNFILLED <id> <unfilled_qty>
+        std::cout << "UNFILLED " << id << " " << qty << std::endl;
+        
+        //discard the unfilled
+    }
+    else //if unfilled == 0
+    {
+        delete current;
+    }
+    
     return;
     /* Post-condition of sellMarket():
      1) check inputs, id not existed, create Order object (heap creation)
@@ -728,6 +745,7 @@ void stock_book<Traits>::cancelOrder(Order::id_type id)
         Order* orderPtr = idOrderMap_it->second;
         if(orderPtr == nullptr) //that id belonged to a market/canceled/filled order
         {
+            std::cout << "ERROR unknown order " << id << std::endl;
             return;
         }
         
@@ -806,15 +824,15 @@ void stock_book<Traits>::bookPrint(size_t depth) const
         auto temp = list->begin();
         for(size_t j=0; j<order_count; j++)
         {
-            sum_qty += temp->get_shares();
+            sum_qty += (*temp)->get_shares();
             temp++;
         }
         //for each price level, prints <price> <total_remaining_qty> <active_order_count>
-        std::cout << price_level << " " << sum_qty << " " << order_count << std::endl;
+        std::cout << "ASK " << price_level << " " << sum_qty << " " << order_count << std::endl;
         sellBook_it++;
     }
     //lists up to depth from highest to lowest BUY/BID price levels
-    size_t buyDepth = (sellBook.size() < depth)? sellBook.size() : depth;
+    size_t buyDepth = (buyBook.size() < depth)? buyBook.size() : depth;
     typename BuyBTree::const_iterator buyBook_it = buyBook.begin();
     for(size_t i=0; i<buyDepth; i++)
     {
@@ -825,11 +843,11 @@ void stock_book<Traits>::bookPrint(size_t depth) const
         auto temp = list->begin();
         for(size_t j=0; j<order_count; j++)
         {
-            sum_qty += temp->get_shares();
+            sum_qty += (*temp)->get_shares();
             temp++;
         }
         //for each price level, prints <price> <total_remaining_qty> <active_order_count>
-        std::cout << price_level << " " << sum_qty << " " << order_count << std::endl;
+        std::cout << "BID " << price_level << " " << sum_qty << " " << order_count << std::endl;
         buyBook_it++;
     }
     std::cout << "END" << std::endl;
@@ -849,9 +867,20 @@ void stock_book<Traits>::historyPrint(const std::string& user, size_t n) const
     auto userHistoryMap_it = userHistoryMap.find(user);
     if(userHistoryMap_it != userHistoryMap.end()) //if found
     {
-        //using forward iterator of TailForwardList, print while iterates forward for nth events in user's history
+        //using forward iterator of TailForwardList, print while iterates forward for the newest nth events in user's history
+        
         TailForwardList<ForwardList>* TailForwardList_ptr = userHistoryMap_it->second;
         auto it = TailForwardList_ptr->begin();
+        
+        if(TailForwardList_ptr->size() > n) //omit this if size() <= n, and start printing from begin()
+        {
+            //move it forward by (size - n) steps before printing so that it prints the lastest n event
+            for(size_t i = 0; i < TailForwardList_ptr->size() - n; i++)
+            {
+                ++it;
+            }
+        }
+        
         while((it != TailForwardList_ptr->end()) && (n > 0))
         {
             Order* temp = it->first;
@@ -1049,6 +1078,11 @@ bool TailForwardList<ForwardList>::empty() const
     return list.empty();
 }
 
+template <typename ForwardList>
+size_t TailForwardList<ForwardList>::size() const
+{
+    return count;
+}
 
 }
 
